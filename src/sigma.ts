@@ -18,6 +18,7 @@ import {
   Listener,
   MouseCoords,
   NodeDisplayData,
+  LabelDisplayData,
   PlainObject,
   CoordinateConversionOverride,
   TypedEventEmitter,
@@ -114,6 +115,9 @@ export interface SigmaNodeEventPayload extends SigmaEventPayload {
 export interface SigmaEdgeEventPayload extends SigmaEventPayload {
   edge: string;
 }
+export interface SigmaLabelEventPayload extends SigmaEventPayload {
+  label: string;
+}
 
 export type SigmaStageEvents = {
   [E in MouseInteraction as `${E}Stage`]: (payload: SigmaStageEventPayload) => void;
@@ -125,6 +129,10 @@ export type SigmaNodeEvents = {
 
 export type SigmaEdgeEvents = {
   [E in MouseInteraction as `${E}Edge`]: (payload: SigmaEdgeEventPayload) => void;
+};
+
+export type SigmaLabelEvents = {
+  [E in MouseInteraction as `${E}Label`]: (payload: SigmaLabelEventPayload) => void;
 };
 
 export type SigmaAdditionalEvents = {
@@ -141,9 +149,17 @@ export type SigmaAdditionalEvents = {
   // Additional edge events
   enterEdge(payload: SigmaEdgeEventPayload): void;
   leaveEdge(payload: SigmaEdgeEventPayload): void;
+
+  // Additional label events
+  enterLabel(payload: SigmaNodeEventPayload): void;
+  leaveLabel(payload: SigmaNodeEventPayload): void;
 };
 
-export type SigmaEvents = SigmaStageEvents & SigmaNodeEvents & SigmaEdgeEvents & SigmaAdditionalEvents;
+export type SigmaEvents = SigmaStageEvents &
+  SigmaNodeEvents &
+  SigmaEdgeEvents &
+  SigmaLabelEvents &
+  SigmaAdditionalEvents;
 
 /**
  * Main class.
@@ -167,6 +183,7 @@ export default class Sigma<GraphType extends Graph = Graph> extends TypedEventEm
   private labelGrid: LabelGrid = new LabelGrid();
   private nodeDataCache: Record<string, NodeDisplayData> = {};
   private edgeDataCache: Record<string, EdgeDisplayData> = {};
+  private labelDataCache: Record<string, LabelDisplayData> = {};
   private nodesWithForcedLabels: string[] = [];
   private edgesWithForcedLabels: string[] = [];
   private nodeExtent: { x: Extent; y: Extent } = { x: [0, 1], y: [0, 1] };
@@ -434,6 +451,27 @@ export default class Sigma<GraphType extends Graph = Graph> extends TypedEventEm
   }
 
   /**
+   * Method that returns the closest label to a given position.
+   */
+  private getLabelAtPosition(position: Coordinates): string | null {
+    const { x, y } = position;
+    let labelAtPosition = null;
+    // Loop through all labels
+    for (const node in this.labelDataCache) {
+      const data = this.labelDataCache[node];
+      const labelPosition = { x: data.x, y: data.y };
+      const size = this.scaleSize(data.size);
+      if (this.mouseIsOnNode(position, labelPosition, size)) {
+        // const distance = Math.sqrt(Math.pow(x - labelPosition.x, 2) + Math.pow(y - labelPosition.y, 2));
+        // if (distance < size) {
+        labelAtPosition = node;
+        // }
+      }
+    }
+    return labelAtPosition;
+  }
+
+  /**
    * Method binding event handlers.
    *
    * @return {Sigma}
@@ -514,6 +552,13 @@ export default class Sigma<GraphType extends Graph = Graph> extends TypedEventEm
           return this.emit(`${eventType}Node`, {
             ...baseEvent,
             node: nodeAtPosition,
+          });
+
+        const labelAtPosition = this.getLabelAtPosition(e);
+        if (labelAtPosition)
+          return this.emit(`${eventType}Label`, {
+            ...baseEvent,
+            label: labelAtPosition,
           });
 
         if (eventType === "wheel" ? this.settings.enableEdgeWheelEvents : this.settings.enableEdgeClickEvents) {
@@ -1009,7 +1054,7 @@ export default class Sigma<GraphType extends Graph = Graph> extends TypedEventEm
       // an issue once we start memoizing getLabelsToDisplay.
       this.displayedLabels.add(node);
 
-      this.settings.labelRenderer(
+      const labelData = this.settings.labelRenderer(
         context,
         {
           key: node,
@@ -1020,6 +1065,7 @@ export default class Sigma<GraphType extends Graph = Graph> extends TypedEventEm
         },
         this.settings,
       );
+      this.labelDataCache[node] = labelData;
     }
 
     return this;

@@ -6,14 +6,14 @@
  * @module
  */
 import { Settings } from "../../settings";
-import { NodeDisplayData, PartialButFor } from "../../types";
+import { NodeDisplayData, PartialButFor, LabelDisplayData } from "../../types";
 
 export default function drawLabel(
   context: CanvasRenderingContext2D,
   data: PartialButFor<NodeDisplayData, "x" | "y" | "size" | "label" | "color">,
   settings: Settings,
-): void {
-  if (!data.label) return;
+): LabelDisplayData {
+  if (!data.label) return { x: 0, y: 0, size: 0 };
 
   const size = settings.labelSize,
     font = settings.labelFont,
@@ -25,5 +25,9 @@ export default function drawLabel(
   context.fillStyle = color;
   context.font = `${weight} ${size}px ${font}`;
 
-  context.fillText(data.label, data.x + data.size + 3, data.y + size / 3);
+  const x = data.x + data.size + 3;
+  const y = data.y + data.size / 3;
+  const displayData = { x, y, size };
+  context.fillText(data.label, x, y);
+  return displayData;
 }

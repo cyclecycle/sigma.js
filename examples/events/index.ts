@@ -14,7 +14,7 @@ const logsDOM = document.getElementById("sigma-logs") as HTMLElement;
 const graph = new Graph();
 graph.import(data);
 
-function logEvent(event: string, itemType: "node" | "edge" | "positions", item: string | MouseCoords): void {
+function logEvent(event: string, itemType: "node" | "edge" | "label" | "positions", item: string | MouseCoords): void {
   const div = document.createElement("div");
   let message = `Event "${event}"`;
   if (item && itemType) {
@@ -22,14 +22,21 @@ function logEvent(event: string, itemType: "node" | "edge" | "positions", item: 
       item = item as MouseCoords;
       message += `, x ${item.x}, y ${item.y}`;
     } else {
-      const label = itemType === "node" ? graph.getNodeAttribute(item, "label") : graph.getEdgeAttribute(item, "label");
-      message += `, ${itemType} ${label || "with no label"} (id "${item}")`;
+      message += ` on ${itemType} "${item}"`;
 
-      if (itemType === "edge") {
-        message += `, source ${graph.getSourceAttribute(item, "label")}, target: ${graph.getTargetAttribute(
-          item,
-          "label",
-        )}`;
+      if (itemType === "label") {
+        message += `, node ${graph.getNodeAttribute(item, "label")}`;
+      } else {
+        const label =
+          itemType === "node" ? graph.getNodeAttribute(item, "label") : graph.getEdgeAttribute(item, "label");
+        message += `, ${itemType} ${label || "with no label"} (id "${item}")`;
+
+        if (itemType === "edge") {
+          message += `, source ${graph.getSourceAttribute(item, "label")}, target: ${graph.getTargetAttribute(
+            item,
+            "label",
+          )}`;
+        }
       }
     }
   }
@@ -61,11 +68,20 @@ const nodeEvents = [
   "doubleClickNode",
   "wheelNode",
 ] as const;
+const labelEvents = [
+  "enterLabel",
+  "leaveLabel",
+  "downLabel",
+  "clickLabel",
+  "rightClickLabel",
+  "doubleClickLabel",
+] as const;
 const edgeEvents = ["downEdge", "clickEdge", "rightClickEdge", "doubleClickEdge", "wheelEdge"] as const;
 const stageEvents = ["downStage", "clickStage", "doubleClickStage", "wheelStage"] as const;
 
 nodeEvents.forEach((eventType) => renderer.on(eventType, ({ node }) => logEvent(eventType, "node", node)));
 edgeEvents.forEach((eventType) => renderer.on(eventType, ({ edge }) => logEvent(eventType, "edge", edge)));
+labelEvents.forEach((eventType) => renderer.on(eventType, ({ label }) => logEvent(eventType, "label", label)));
 
 renderer.on("enterEdge", ({ edge }) => {
   logEvent("enterEdge", "edge", edge);

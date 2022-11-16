@@ -71,6 +71,10 @@ export interface NodeDisplayData extends Coordinates, DisplayData {
 
 export interface EdgeDisplayData extends DisplayData {}
 
+export interface LabelDisplayData extends Coordinates {
+  size: number;
+}
+
 export type CoordinateConversionOverride = {
   cameraState?: CameraState;
   matrix?: Float32Array;
